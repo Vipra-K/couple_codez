@@ -3,7 +3,7 @@ import fs from 'fs';
 import readline from 'readline';
 
 const credentials = JSON.parse(
-  fs.readFileSync('credentials/drive-oauth-client.json', 'utf8')
+  fs.readFileSync(`${__dirname}/credentials/drive-oauth-client.json`, 'utf8')
 );
 
 const { client_id, client_secret, redirect_uris } =

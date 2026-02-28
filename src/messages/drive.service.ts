@@ -1,8 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { google } from 'googleapis';
 import { Readable } from 'stream';
-import * as fs from 'fs';
-import * as path from 'path';
 
 @Injectable()
 export class DriveService {
@@ -10,26 +8,30 @@ export class DriveService {
   private drive;
 
   constructor() {
-    // 1. Load credentials and tokens
-    const credentialsPath = path.join(process.cwd(), 'credentials/drive-oauth-client.json');
-    const tokenPath = path.join(process.cwd(), 'credentials/drive-token.json');
+    const clientId = process.env.DRIVE_CLIENT_ID;
+    const clientSecret = process.env.DRIVE_CLIENT_SECRET;
+    const redirectUri = process.env.DRIVE_REDIRECT_URI;
+    const refreshToken = process.env.DRIVE_REFRESH_TOKEN;
+    const accessToken = process.env.DRIVE_ACCESS_TOKEN;
+    const expiryDate = process.env.DRIVE_TOKEN_EXPIRY;
 
-    const credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
-    const tokens = JSON.parse(fs.readFileSync(tokenPath, 'utf8'));
+    if (!clientId || !clientSecret || !refreshToken) {
+      throw new Error('Missing required Google Drive environment variables');
+    }
 
-    const { client_id, client_secret, redirect_uris } =
-      credentials.installed || credentials.web;
-
-    // 2. Initialize OAuth2 client
     const oAuth2Client = new google.auth.OAuth2(
-      client_id,
-      client_secret,
-      redirect_uris[0],
+      clientId,
+      clientSecret,
+      redirectUri,
     );
 
-    oAuth2Client.setCredentials(tokens);
+    oAuth2Client.setCredentials({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      token_type: 'Bearer',
+      expiry_date: expiryDate ? parseInt(expiryDate) : undefined,
+    });
 
-    // 3. Initialize Drive client
     this.drive = google.drive({ version: 'v3', auth: oAuth2Client });
   }
 
@@ -39,7 +41,7 @@ export class DriveService {
   ): Promise<{ id: string; webViewLink: string }> {
     const timestamp = Date.now();
     const fileName = `${coupleId}_${timestamp}_${file.originalname}`;
-    
+
     const fileMetadata = {
       name: fileName,
       parents: [process.env.DRIVE_FOLDER_ID],
@@ -59,7 +61,6 @@ export class DriveService {
 
       const fileId = response.data.id;
 
-      // Set permission to anyone with link can read
       await this.drive.permissions.create({
         fileId: fileId,
         requestBody: {
@@ -68,7 +69,6 @@ export class DriveService {
         },
       });
 
-      // Drive direct link format
       const publicUrl = `https://drive.google.com/uc?id=${fileId}`;
 
       return {
