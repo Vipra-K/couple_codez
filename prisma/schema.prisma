@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  fullName  String?
+  gender    String?
+  coupleId  String?
+  pairCode  String?   @unique
+  couple    Couple?   @relation(fields: [coupleId], references: [id])
+  messages  Message[]
+  fcmToken  String?
+  createdAt DateTime  @default(now())
+}
+
+model Couple {
+  id            String    @id @default(uuid())
+  code          String    @unique
+  users         User[]
+  messages      Message[]
+  lastMessageAt DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+model Message {
+  id        String   @id @default(uuid())
+
+  coupleId  String
+  couple    Couple   @relation(fields: [coupleId], references: [id])
+
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id])
+
+  type      MessageType
+  content   String
+
+  status    MessageStatus @default(SENT)
+  driveFileId String?
+
+  createdAt DateTime @default(now())
+  deletedAt DateTime?
+
+  replyToId       String?
+  replyToContent  String?
+  replyToSenderId String?
+  replyToType     String?
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
