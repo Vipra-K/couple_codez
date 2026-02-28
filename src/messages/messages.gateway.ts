@@ -64,6 +64,7 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
     @ConnectedSocket() client: Socket,
   ) {
     const { coupleId, userId } = data;
+    client.data.userId = userId;
     client.join(coupleId);
     
     // Update presence
@@ -82,6 +83,37 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
     // Also respond to the client with current room status if needed, 
     // or the client can fetch it via another event.
     console.log(`User ${userId} joined room ${coupleId}`);
+  }
+
+  @SubscribeMessage('getPartnerStatus')
+  async handleGetPartnerStatus(
+    @MessageBody() data: { coupleId: string; userId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { coupleId, userId } = data;
+
+    // Find the other user in the room
+    const roomSockets = await this.server
+      .in(coupleId)
+      .fetchSockets();
+
+    const partnerSocket = roomSockets.find(
+      (s) => s.data?.userId && s.data.userId !== userId,
+    );
+
+    if (partnerSocket) {
+      // Partner is online — emit back to requester
+      client.emit('partnerStatus', {
+        userId: partnerSocket.data.userId,
+        status: 'ONLINE',
+      });
+    } else {
+      // Partner is offline
+      client.emit('partnerStatus', {
+        userId: 'partner',
+        status: 'OFFLINE',
+      });
+    }
   }
 
   @SubscribeMessage('sendMessage')
