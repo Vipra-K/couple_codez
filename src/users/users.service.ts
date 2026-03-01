@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DriveService } from '../messages/drive.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -10,10 +11,20 @@ export class UsersService {
   ) {}
 
   async updateFcmToken(userId: string, fcmToken: string) {
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { fcmToken },
-    });
+    try {
+      return await this.prisma.user.update({
+        where: { id: userId },
+        data: { fcmToken },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException('User not found');
+      }
+      throw error;
+    }
   }
 
   async updateProfilePic(userId: string, file: Express.Multer.File) {
