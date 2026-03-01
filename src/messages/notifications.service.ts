@@ -34,9 +34,9 @@ export class NotificationsService {
           credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
         });
 
-        console.log('Firebase initialized successfully.');
+
       } catch (e) {
-        console.error('Failed to initialize Firebase:', e.message);
+
         admin.initializeApp({
           credential: admin.credential.applicationDefault(),
         });
@@ -65,9 +65,9 @@ export class NotificationsService {
 
     try {
       const response = await admin.messaging().send(message);
-      console.log('Successfully sent message:', response);
+
     } catch (error) {
-      console.error('Error sending message:', error);
+
     }
   }
 }

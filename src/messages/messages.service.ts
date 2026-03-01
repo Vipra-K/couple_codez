@@ -41,12 +41,14 @@ export class MessagesService {
     return message;
   }
 
-  async findHistory(coupleId: string) {
-    return this.prisma.message.findMany({
+  async findHistory(coupleId: string, skip: number = 0, take: number = 15) {
+    const messages = await this.prisma.message.findMany({
       where: { coupleId },
-      orderBy: { createdAt: 'asc' },
-      take: 10,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
     });
+    return messages.reverse();
   }
 
   // Paginated media messages (IMAGE + VIDEO only)
@@ -80,6 +82,26 @@ export class MessagesService {
   async getUser(userId: string) {
     return this.prisma.user.findUnique({
       where: { id: userId },
+    });
+  }
+
+  async markAsRead(coupleId: string, userId: string, lastMessageId: string) {
+    const lastMessage = await this.prisma.message.findUnique({
+      where: { id: lastMessageId },
+    });
+
+    if (!lastMessage) return;
+
+    await this.prisma.message.updateMany({
+      where: {
+        coupleId,
+        senderId: { not: userId },
+        status: { not: 'READ' },
+        createdAt: {
+          lte: lastMessage.createdAt,
+        },
+      },
+      data: { status: 'READ' },
     });
   }
 }

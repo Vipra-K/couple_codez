@@ -35,8 +35,12 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
     this.server.to(coupleId).emit('newMessage', message);
   }
 
+  notifyThemeChanged(coupleId: string, theme: any) {
+    this.server.to(coupleId).emit('themeChanged', theme);
+  }
+
   handleConnection(client: Socket) {
-    console.log(`Client connected: ${client.id}`);
+
   }
 
   handleDisconnect(client: Socket) {
@@ -55,7 +59,7 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
       // Notify remaining partner
       this.server.to(coupleId).emit('partnerStatus', { userId, status: 'OFFLINE' });
     }
-    console.log(`Client disconnected: ${client.id}`);
+
   }
 
   @SubscribeMessage('joinRoom')
@@ -82,7 +86,7 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
     
     // Also respond to the client with current room status if needed, 
     // or the client can fetch it via another event.
-    console.log(`User ${userId} joined room ${coupleId}`);
+
   }
 
   @SubscribeMessage('getPartnerStatus')
@@ -130,7 +134,7 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
     const onlineInRoom = this.onlineUsers.get(createMessageDto.coupleId);
     // Assuming a couple only has 2 people. If only 1 is online, it's the sender.
     if (!onlineInRoom || onlineInRoom.size < 2) {
-      console.log(`Triggering notification for offline partner in couple ${createMessageDto.coupleId}`);
+
       
       try {
         const partner = await this.messagesService.getPartner(createMessageDto.coupleId, createMessageDto.senderId);
@@ -151,10 +155,39 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
           );
         }
       } catch (error) {
-        console.error('Failed to send offline notification:', error);
+
       }
     }
     
     return message;
+  }
+
+  @SubscribeMessage('typing')
+  handleTyping(
+    @MessageBody() data: { coupleId: string; userId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.to(data.coupleId).emit('partnerTyping', { userId: data.userId, isTyping: true });
+  }
+
+  @SubscribeMessage('stopTyping')
+  handleStopTyping(
+    @MessageBody() data: { coupleId: string; userId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.to(data.coupleId).emit('partnerTyping', { userId: data.userId, isTyping: false });
+  }
+
+  @SubscribeMessage('markAsRead')
+  async handleMarkAsRead(
+    @MessageBody() data: { coupleId: string; userId: string; lastMessageId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { coupleId, userId, lastMessageId } = data;
+
+    await this.messagesService.markAsRead(coupleId, userId, lastMessageId);
+
+    // Notify the partner that their messages were read
+    this.server.to(coupleId).emit('messagesRead', { userId, lastMessageId });
   }
 }

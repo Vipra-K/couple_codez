@@ -12,6 +12,7 @@ model User {
   password  String
   fullName  String?
   gender    String?
+  profilePic String?
   coupleId  String?
   pairCode  String?   @unique
   couple    Couple?   @relation(fields: [coupleId], references: [id])
@@ -23,10 +24,50 @@ model User {
 model Couple {
   id            String    @id @default(uuid())
   code          String    @unique
+  
+  themeTemplateId String?
+  themeTemplate   ThemeTemplate? @relation(fields: [themeTemplateId], references: [id])
+
   users         User[]
   messages      Message[]
   lastMessageAt DateTime?
   createdAt     DateTime  @default(now())
+}
+
+model ThemeTemplate {
+  id        String   @id @default(uuid())
+  name      String   @unique
+
+  // Background control
+  backgroundType ChatBackgroundType
+
+  // COLOR
+  backgroundColor String?
+
+  // GRADIENT
+  gradientStartColor String?
+  gradientEndColor   String?
+  gradientAngle      Int? // 0–360
+
+  // IMAGE
+  backgroundImageUrl String?
+
+  // Message bubbles
+  senderBubbleColor   String
+  receiverBubbleColor String
+  senderTextColor     String
+  receiverTextColor   String
+
+  accentColor String
+
+  couples   Couple[]
+  createdAt DateTime @default(now())
+}
+
+enum ChatBackgroundType {
+  COLOR
+  GRADIENT
+  IMAGE
 }
 
 model Message {

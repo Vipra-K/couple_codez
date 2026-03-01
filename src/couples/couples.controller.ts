@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, UseGuards, Request } from '@nestjs/common';
 import { CouplesService } from './couples.service';
 
 @Controller('couples')
@@ -17,8 +17,19 @@ export class CouplesController {
 
   @Get('status')
   async getStatus(@Request() req: any) {
-    // Note: Assuming some auth middleware attaches user. Normally req.user.id
-    // For now taking from query or body if needed, but using userId for consistency with other methods
     return this.couplesService.getStatus(req.query.userId);
+  }
+
+  @Get('themes/templates')
+  async getTemplates() {
+    return this.couplesService.getTemplates();
+  }
+
+  @Post(':id/theme')
+  async updateTheme(
+    @Param('id') coupleId: string,
+    @Body('templateId') templateId: string,
+  ) {
+    return this.couplesService.updateTheme(coupleId, templateId);
   }
 }

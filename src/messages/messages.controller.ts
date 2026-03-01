@@ -49,9 +49,7 @@ export class MessagesController {
     @Body('replyToSenderId') replyToSenderId?: string,
     @Body('replyToType') replyToType?: string,
   ) {
-    console.log('--- Upload Request Received ---');
-    console.log('File:', file ? { originalname: file.originalname, mimetype: file.mimetype, size: file.size } : 'NULL');
-    console.log('Body:', { coupleId, senderId, type: requestedType });
+
 
     if (!file || !coupleId || !senderId) {
       throw new BadRequestException('File, coupleId, and senderId are required');
@@ -87,10 +85,18 @@ export class MessagesController {
     return message;
   }
 
-  // Chat history (last 10)
+  // Chat history (paginated)
   @Get(':coupleId')
-  findAll(@Param('coupleId') coupleId: string) {
-    return this.messagesService.findHistory(coupleId);
+  findAll(
+    @Param('coupleId') coupleId: string,
+    @Query('skip') skip: string = '0',
+    @Query('take') take: string = '15',
+  ) {
+    return this.messagesService.findHistory(
+      coupleId,
+      parseInt(skip, 10),
+      parseInt(take, 10),
+    );
   }
 
   // Paginated media (images + videos) for profile screen

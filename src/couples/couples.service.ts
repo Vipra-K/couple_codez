@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MessagesGateway } from '../messages/messages.gateway';
 
 @Injectable()
 export class CouplesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private messagesGateway: MessagesGateway,
+  ) {}
 
   async generateCode(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -60,8 +64,47 @@ export class CouplesService {
   async getStatus(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { couple: { include: { users: true } } },
+      include: {
+        couple: {
+          include: {
+            users: true,
+            themeTemplate: true,
+          },
+        },
+      },
     });
     return user;
+  }
+
+  async updateTheme(coupleId: string, templateId: string) {
+    const couple = await this.prisma.couple.findUnique({
+      where: { id: coupleId },
+    });
+    if (!couple) throw new NotFoundException('Couple not found');
+
+    const template = await this.prisma.themeTemplate.findUnique({
+      where: { id: templateId },
+    });
+    if (!template) throw new NotFoundException('Theme template not found');
+
+    const updated = await this.prisma.couple.update({
+      where: { id: coupleId },
+      data: { themeTemplateId: templateId },
+      include: { themeTemplate: true },
+    });
+
+    // Broadcast in real-time to both partners
+    const updatedAny = updated as any;
+    if (updatedAny.themeTemplate) {
+      this.messagesGateway.notifyThemeChanged(coupleId, updatedAny.themeTemplate);
+    }
+
+    return updated;
+  }
+
+  async getTemplates() {
+    return this.prisma.themeTemplate.findMany({
+      orderBy: { createdAt: 'asc' },
+    });
   }
 }
